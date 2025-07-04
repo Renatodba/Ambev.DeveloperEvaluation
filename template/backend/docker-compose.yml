@@ -1,14 +1,6 @@
 version: '3.8'
 
 services:
-  adminer:
-    image: adminer
-    restart: always
-    depends_on:
-      - ambev.developerevaluation.database
-    ports:
-      - "8082:8080"
-
   ambev.developerevaluation.webapi:
     container_name: ambev_developer_evaluation_webapi
     image: ${DOCKER_REGISTRY-}ambevdeveloperevaluationwebapi
