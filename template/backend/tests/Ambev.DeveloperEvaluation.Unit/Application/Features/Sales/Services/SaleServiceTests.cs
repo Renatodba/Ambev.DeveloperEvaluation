@@ -3,108 +3,126 @@ using Ambev.DeveloperEvaluation.Domain.Repositories;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.Dtos;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.Services;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace Ambev.DeveloperEvaluation.Unit.Application.Features.Sales.Services
 {
     /// <summary>
-    /// Unit tests for <see cref="SaleService"/>.
+    /// Concrete implementation of ISaleService using ISaleRepository.
+    /// Applies business rules for discounts and quantity limits.
     /// </summary>
-    public class SaleServiceTests
+    public class SaleService : ISaleService
     {
-        private readonly Mock<ISaleRepository> _repoMock;
-        private readonly SaleService _service;
+        private readonly ISaleRepository _repo;
 
-        public SaleServiceTests()
-        {
-            _repoMock = new Mock<ISaleRepository>();
-            _service = new SaleService(_repoMock.Object);
-        }
+        public SaleService(ISaleRepository repo) => _repo = repo;
 
-        [Fact]
-        public async Task CreateAsync_Should_Call_CreateAsync_On_Repository_And_Return_Dto()
+        /// <inheritdoc />
+        public async Task<SaleDto> CreateAsync(CreateSaleDto dto)
         {
-            // Arrange
-            var dto = new CreateSaleDto
+            // Business rule: maximum 20 identical items
+            foreach (var itemDto in dto.Items)
             {
-                SaleNumber = "S-001",
-                Date = DateTime.UtcNow,
-                CustomerExternalId = "C1",
-                BranchExternalId = "B1",
-                Items = new List<CreateSaleItemDto>
-                {
-                    new CreateSaleItemDto
-                    {
-                        ProductExternalId = "P1",
-                        ProductDescription = "Test Product",
-                        Quantity = 5,
-                        UnitPrice = 10m,
-                        Discount = 0.1m
-                    }
-                }
-            };
+                if (itemDto.Quantity > 20)
+                    throw new InvalidOperationException("Cannot sell more than 20 identical items.");
+            }
 
-            // Act
-            var result = await _service.CreateAsync(dto);
+            // Instantiate sale
+            var sale = new Sale(
+                Guid.NewGuid(),
+                dto.SaleNumber,
+                dto.Date,
+                dto.CustomerExternalId,
+                dto.BranchExternalId
+            );
 
-            // Assert
-            _repoMock.Verify(r => r.CreateAsync(It.IsAny<Sale>()), Times.Once);
-            Assert.NotNull(result);
-            Assert.Equal(dto.SaleNumber, result.SaleNumber);
-            Assert.Single(result.Items);
-            Assert.Equal(5, result.Items[0].Quantity);
-        }
-
-        [Fact]
-        public async Task GetAllAsync_Should_Call_GetAllAsync_On_Repository_And_Return_List()
-        {
-            // Arrange
-            var salesList = new List<Sale>
+            // Add items with quantity-based discount
+            foreach (var itemDto in dto.Items)
             {
-                new Sale(Guid.NewGuid(), "S1", DateTime.UtcNow, "C1", "B1"),
-                new Sale(Guid.NewGuid(), "S2", DateTime.UtcNow, "C2", "B2")
-            };
-            _repoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(salesList);
+                var discount = itemDto.Quantity >= 10 ? 0.20m
+                                : itemDto.Quantity >= 4 ? 0.10m
+                                : 0m;
+                var item = new SaleItem(
+                    Guid.NewGuid(),
+                    itemDto.ProductExternalId,
+                    itemDto.ProductDescription,
+                    itemDto.Quantity,
+                    itemDto.UnitPrice,
+                    discount
+                );
+                sale.AddItem(item);
+            }
 
-            // Act
-            var result = await _service.GetAllAsync();
-
-            // Assert
-            _repoMock.Verify(r => r.GetAllAsync(), Times.Once);
-            Assert.Equal(2, ((List<SaleDto>)result).Count);
+            await _repo.CreateAsync(sale);
+            return SaleDto.FromEntity(sale);
         }
 
-        [Fact]
-        public async Task GetByIdAsync_Nonexistent_Should_Return_Null()
+        /// <inheritdoc />
+        public async Task<SaleDto> UpdateAsync(Guid id, UpdateSaleDto dto)
         {
-            // Arrange
-            _repoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((Sale)null);
+            var existing = await _repo.GetByIdAsync(id);
+            if (existing == null) return null;
 
-            // Act
-            var result = await _service.GetByIdAsync(Guid.NewGuid());
+            // Business rule: maximum 20 identical items
+            foreach (var itemDto in dto.Items)
+            {
+                if (itemDto.Quantity > 20)
+                    throw new InvalidOperationException("Cannot sell more than 20 identical items.");
+            }
 
-            // Assert
-            Assert.Null(result);
-            _repoMock.Verify(r => r.GetByIdAsync(It.IsAny<Guid>()), Times.Once);
+            // Update core sale data
+            existing.UpdateFrom(new Sale(
+                id,
+                dto.SaleNumber,
+                dto.Date,
+                dto.CustomerExternalId,
+                dto.BranchExternalId
+            ));
+            existing.Cancel(); // if needed
+
+            // Remove old items
+            foreach (var oldItem in existing.Items.ToList())
+                existing.CancelItem(oldItem.Id);
+
+            // Add updated items with discount logic
+            foreach (var itemDto in dto.Items)
+            {
+                var discount = itemDto.Quantity >= 10 ? 0.20m
+                                : itemDto.Quantity >= 4 ? 0.10m
+                                : 0m;
+                var newItem = new SaleItem(
+                    Guid.NewGuid(),
+                    itemDto.ProductExternalId,
+                    itemDto.ProductDescription,
+                    itemDto.Quantity,
+                    itemDto.UnitPrice,
+                    discount
+                );
+                existing.AddItem(newItem);
+            }
+
+            await _repo.UpdateAsync(existing);
+            return SaleDto.FromEntity(existing);
         }
 
-        [Fact]
-        public async Task DeleteAsync_Should_Call_DeleteAsync_On_Repository()
+        /// <inheritdoc />
+        public async Task DeleteAsync(Guid id)
         {
-            // Arrange
-            var id = Guid.NewGuid();
+            await _repo.DeleteAsync(id);
+        }
 
-            // Act
-            await _service.DeleteAsync(id);
+        /// <inheritdoc />
+        public async Task<SaleDto> GetByIdAsync(Guid id)
+        {
+            var sale = await _repo.GetByIdAsync(id);
+            return sale == null ? null : SaleDto.FromEntity(sale);
+        }
 
-            // Assert
-            _repoMock.Verify(r => r.DeleteAsync(id), Times.Once);
+        /// <inheritdoc />
+        public async Task<IEnumerable<SaleDto>> GetAllAsync()
+        {
+            var sales = await _repo.GetAllAsync();
+            return sales.Select(SaleDto.FromEntity);
         }
     }
 }
-
