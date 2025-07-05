@@ -3,8 +3,10 @@ using Ambev.DeveloperEvaluation.Common.HealthChecks;
 using Ambev.DeveloperEvaluation.Common.Logging;
 using Ambev.DeveloperEvaluation.Common.Security;
 using Ambev.DeveloperEvaluation.Common.Validation;
+using Ambev.DeveloperEvaluation.Domain.Repositories;
 using Ambev.DeveloperEvaluation.IoC;
 using Ambev.DeveloperEvaluation.ORM;
+using Ambev.DeveloperEvaluation.ORM.Repositories;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.Services;
 using Ambev.DeveloperEvaluation.WebApi.Middleware;
 using MediatR;
@@ -37,7 +39,8 @@ public class Program
                 )
             );
 
-  
+            builder.Services.AddScoped<ISaleRepository, SaleRepository>();
+
             builder.Services.AddScoped<ISaleService, SaleService>();
 
             builder.Services.AddJwtAuthentication(builder.Configuration);

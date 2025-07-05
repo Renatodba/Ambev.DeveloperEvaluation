@@ -49,32 +49,55 @@ namespace Ambev.DeveloperEvaluation.Domain.Entities;
         /// </summary>
         public decimal TotalAmount => Items.Sum(i => i.TotalAmount);
 
-        // Construtor para ORM
-        protected Sale() { }
+    // Parameterless constructor for ORM
+    protected Sale() { }
 
-        public Sale(Guid id, string saleNumber, DateTime date, string customerExternalId, string branchExternalId)
-        {
-            Id = id;
-            SaleNumber = saleNumber ?? throw new ArgumentNullException(nameof(saleNumber));
-            Date = date;
-            CustomerExternalId = customerExternalId ?? throw new ArgumentNullException(nameof(customerExternalId));
-            BranchExternalId = branchExternalId ?? throw new ArgumentNullException(nameof(branchExternalId));
-        }
-
-        /// <summary>
-        /// Adiciona um item à venda
-        /// </summary>
-        public void AddItem(SaleItem item)
-        {
-            if (item == null) throw new ArgumentNullException(nameof(item));
-            _items.Add(item);
-        }
-
-        /// <summary>
-        /// Cancela a venda
-        /// </summary>
-        public void Cancel()
-        {
-            IsCancelled = true;
-        }
+    /// <summary>
+    /// Initializes a new sale with required fields.
+    /// </summary>
+    public Sale(Guid id, string saleNumber, DateTime date, string customerExternalId, string branchExternalId)
+    {
+        Id = id;
+        SaleNumber = saleNumber ?? throw new ArgumentNullException(nameof(saleNumber));
+        Date = date;
+        CustomerExternalId = customerExternalId ?? throw new ArgumentNullException(nameof(customerExternalId));
+        BranchExternalId = branchExternalId ?? throw new ArgumentNullException(nameof(branchExternalId));
     }
+
+    /// <summary>
+    /// Adds an item to the sale.
+    /// </summary>
+    public void AddItem(SaleItem item)
+    {
+        if (item == null) throw new ArgumentNullException(nameof(item));
+        _items.Add(item);
+    }
+
+    /// <summary>
+    /// Cancels the entire sale.
+    /// </summary>
+    public void Cancel() => IsCancelled = true;
+
+    /// <summary>
+    /// Cancels a specific item within the sale.
+    /// </summary>
+    public void CancelItem(Guid itemId)
+    {
+        var item = _items.FirstOrDefault(i => i.Id == itemId);
+        if (item == null) throw new InvalidOperationException("Sale item not found.");
+        item.Cancel();
+    }
+
+    /// <summary>
+    /// Updates core fields of this sale based on another instance.
+    /// </summary>
+    public void UpdateFrom(Sale updated)
+    {
+        if (updated == null) throw new ArgumentNullException(nameof(updated));
+        SaleNumber = updated.SaleNumber;
+        Date = updated.Date;
+        CustomerExternalId = updated.CustomerExternalId;
+        BranchExternalId = updated.BranchExternalId;
+        if (updated.IsCancelled) Cancel();
+    }
+}

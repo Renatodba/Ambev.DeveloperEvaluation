@@ -7,50 +7,32 @@ using System.Threading.Tasks;
 namespace Ambev.DeveloperEvaluation.Domain.Entities
 {
     /// <summary>
-    /// Representa um item dentro de uma venda
+    /// Represents an item within a sale.
     /// </summary>
     public class SaleItem
     {
+        /// <summary>
+        /// Unique identifier for the sale item.
+        /// </summary>
         public Guid Id { get; private set; }
 
-        /// <summary>
-        /// Identificador externo do produto (External Identity)
-        /// </summary>
         public string ProductExternalId { get; private set; }
-
-        /// <summary>
-        /// Descrição denormalizada do produto
-        /// </summary>
         public string ProductDescription { get; private set; }
-
-        /// <summary>
-        /// Quantidade vendida
-        /// </summary>
         public int Quantity { get; private set; }
-
-        /// <summary>
-        /// Preço unitário
-        /// </summary>
         public decimal UnitPrice { get; private set; }
-
-        /// <summary>
-        /// Percentual de desconto aplicado (ex.: 0.10 para 10%)
-        /// </summary>
         public decimal Discount { get; private set; }
-
-        /// <summary>
-        /// Indica se o item foi cancelado
-        /// </summary>
         public bool IsCancelled { get; private set; }
 
-        /// <summary>
-        /// Valor total do item considerando quantidade, preço e desconto
-        /// </summary>
         public decimal TotalAmount => Math.Round(Quantity * UnitPrice * (1 - Discount), 2);
 
+        // Parameterless constructor for ORM
         protected SaleItem() { }
 
-        public SaleItem(Guid id, string productExternalId, string productDescription, int quantity, decimal unitPrice, decimal discount)
+        /// <summary>
+        /// Initializes a new sale item with required fields.
+        /// </summary>
+        public SaleItem(Guid id, string productExternalId, string productDescription,
+                        int quantity, decimal unitPrice, decimal discount)
         {
             Id = id;
             ProductExternalId = productExternalId ?? throw new ArgumentNullException(nameof(productExternalId));
@@ -64,11 +46,19 @@ namespace Ambev.DeveloperEvaluation.Domain.Entities
         }
 
         /// <summary>
-        /// Cancela este item de venda
+        /// Cancels this sale item.
         /// </summary>
-        public void Cancel()
+        public void Cancel() => IsCancelled = true;
+
+        /// <summary>
+        /// Updates core fields of this sale item based on another instance.
+        /// </summary>
+        public void UpdateFrom(SaleItem updated)
         {
-            IsCancelled = true;
+            if (updated == null) throw new ArgumentNullException(nameof(updated));
+            Quantity = updated.Quantity;
+            UnitPrice = updated.UnitPrice;
+            Discount = updated.Discount;
         }
     }
 }
