@@ -1,19 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http.Json;
 using System.Net;
-using System.Text;
 using System.Threading.Tasks;
 using Xunit;
 using Microsoft.VisualStudio.TestPlatform.TestHost;
 using System.Net.Http;
-
-using System.Threading.Tasks;
-
+using Microsoft.AspNetCore.Hosting;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.Dtos;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Hosting;
+using System.IO;
 
 namespace Ambev.DeveloperEvaluation.Functional.Features.Sales
 {
@@ -26,7 +23,16 @@ namespace Ambev.DeveloperEvaluation.Functional.Features.Sales
 
         public SalesControllerIntegrationTests(WebApplicationFactory<Program> factory)
         {
-            _client = factory.CreateClient();
+            var projectDir = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.Parent.FullName;
+            var solutionDir = Directory.GetParent(projectDir).FullName;
+            var webApiPath = Path.Combine(solutionDir, "src", "Ambev.DeveloperEvaluation.WebApi");
+
+            var clientFactory = factory.WithWebHostBuilder(builder =>
+            {
+                builder.UseContentRoot(webApiPath);
+                builder.UseEnvironment(Environments.Development);
+            });
+            _client = clientFactory.CreateClient();
         }
 
         [Fact]
@@ -39,13 +45,15 @@ namespace Ambev.DeveloperEvaluation.Functional.Features.Sales
                 Date = DateTime.UtcNow,
                 CustomerExternalId = "CUST-123",
                 BranchExternalId = "BR-456",
-                Items = new() {
-                    new CreateSaleItemDto {
+                Items = new()
+                {
+                    new CreateSaleItemDto
+                    {
                         ProductExternalId = "PRD-789",
-                        ProductDescription  = "Integration Test Product",
-                        Quantity            = 5,
-                        UnitPrice           = 20.0m,
-                        Discount            = 0m
+                        ProductDescription = "Integration Test Product",
+                        Quantity = 5,
+                        UnitPrice = 20.0m,
+                        Discount = 0m
                     }
                 }
             };
