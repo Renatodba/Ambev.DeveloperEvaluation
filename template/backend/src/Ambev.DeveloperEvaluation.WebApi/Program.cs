@@ -12,6 +12,7 @@ using Ambev.DeveloperEvaluation.WebApi.Middleware;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Ambev.DeveloperEvaluation.WebApi.Features.Sales.Controllers;
 
 namespace Ambev.DeveloperEvaluation.WebApi;
 
@@ -27,6 +28,8 @@ public class Program
             builder.AddDefaultLogging();
 
             builder.Services.AddControllers();
+         
+
             builder.Services.AddEndpointsApiExplorer();
 
             builder.AddBasicHealthChecks();

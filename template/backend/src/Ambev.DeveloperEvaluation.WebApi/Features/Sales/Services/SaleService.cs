@@ -27,10 +27,11 @@ namespace Ambev.DeveloperEvaluation.WebApi.Features.Sales.Services
         /// <inheritdoc />
         public async Task<SaleDto> CreateAsync(CreateSaleDto dto)
         {
+            var dateUtc = DateTime.SpecifyKind(dto.Date, DateTimeKind.Utc);
             var sale = new Sale(
                 Guid.NewGuid(),
                 dto.SaleNumber,
-                dto.Date,
+                dateUtc,                  
                 dto.CustomerExternalId,
                 dto.BranchExternalId
             );
@@ -62,10 +63,12 @@ namespace Ambev.DeveloperEvaluation.WebApi.Features.Sales.Services
             existing.UpdateFrom(new Sale(
                 id,
                 dto.SaleNumber,
-                dto.Date,
+                DateTime.SpecifyKind(dto.Date, DateTimeKind.Utc),
                 dto.CustomerExternalId,
                 dto.BranchExternalId
             ));
+
+
 
             existing.Cancel();
             foreach (var item in existing.Items.ToList())
