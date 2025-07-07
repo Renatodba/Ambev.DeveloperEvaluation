@@ -1,86 +1,156 @@
-# Developer Evaluation Project
-
 `READ CAREFULLY`
+# Ambev Developer Evaluation Project
 
-## Instructions
-**The test below will have up to 7 calendar days to be delivered from the date of receipt of this manual.**
+This repository contains the complete solution for the Sales API as part of the Ambev Developer Evaluation. Below you will find instructions to configure, run, and test the project.
 
-- The code must be versioned in a public Github repository and a link must be sent for evaluation once completed
-- Upload this template to your repository and start working from it
-- Read the instructions carefully and make sure all requirements are being addressed
-- The repository must provide instructions on how to configure, execute and test the project
-- Documentation and overall organization will also be taken into consideration
+---
 
-## Use Case
-**You are a developer on the DeveloperStore team. Now we need to implement the API prototypes.**
+## Table of Contents
 
-As we work with `DDD`, to reference entities from other domains, we use the `External Identities` pattern with denormalization of entity descriptions.
+- [Prerequisites](#prerequisites)
+- [Cloning the Repository](#cloning-the-repository)
+- [Docker Setup](#docker-setup)
+- [Database](#database)
+- [Building and Running the API](#building-and-running-the-api)
+- [Migrations and Database Update](#migrations-and-database-update)
+- [Testing](#testing)
+- [Project Structure](#project-structure)
+- [Main Endpoints](#main-endpoints)
+- [Contact](#contact)
 
-Therefore, you will write an API (complete CRUD) that handles sales records. The API needs to be able to inform:
+---
 
-* Sale number
-* Date when the sale was made
-* Customer
-* Total sale amount
-* Branch where the sale was made
-* Products
-* Quantities
-* Unit prices
-* Discounts
-* Total amount for each item
-* Cancelled/Not Cancelled
+## Prerequisites
 
-It's not mandatory, but it would be a differential to build code for publishing events of:
-* SaleCreated
-* SaleModified
-* SaleCancelled
-* ItemCancelled
+- [.NET SDK 8.0](https://dotnet.microsoft.com/download)
+- [Docker](https://www.docker.com/) & [Docker Compose](https://docs.docker.com/compose/)
+- [Git](https://git-scm.com/)
 
-If you write the code, **it's not required** to actually publish to any Message Broker. You can log a message in the application log or however you find most convenient.
+---
 
-### Business Rules
+## Cloning the Repository
 
-* Purchases above 4 identical items have a 10% discount
-* Purchases between 10 and 20 identical items have a 20% discount
-* It's not possible to sell above 20 identical items
-* Purchases below 4 items cannot have a discount
+```bash
+git clone https://github.com/YOUR_USERNAME/Ambev.DeveloperEvaluation.git
+cd Ambev.DeveloperEvaluation/template/backend
+```
 
-These business rules define quantity-based discounting tiers and limitations:
+---
 
-1. Discount Tiers:
-   - 4+ items: 10% discount
-   - 10-20 items: 20% discount
+## Docker Setup
 
-2. Restrictions:
-   - Maximum limit: 20 items per product
-   - No discounts allowed for quantities below 4 items
+In the `template/backend` directory, run:
 
-## Overview
-This section provides a high-level overview of the project and the various skills and competencies it aims to assess for developer candidates. 
+```bash
+docker-compose up -d
+```
 
-See [Overview](/.doc/overview.md)
+This will start:
 
-## Tech Stack
-This section lists the key technologies used in the project, including the backend, testing, frontend, and database components. 
+- PostgreSQL at `localhost:5432`
+- MongoDB at `localhost:27017`
+- Redis at `localhost:6379`
+- Adminer at `localhost:8082`
+- Web API at `localhost:8080` (HTTP) and `8081` (HTTPS)
 
-See [Tech Stack](/.doc/tech-stack.md)
+---
 
-## Frameworks
-This section outlines the frameworks and libraries that are leveraged in the project to enhance development productivity and maintainability. 
+## Database
 
-See [Frameworks](/.doc/frameworks.md)
+1. Access Adminer at [http://localhost:8082](http://localhost:8082):
 
-<!-- 
-## API Structure
-This section includes links to the detailed documentation for the different API resources:
-- [API General](./docs/general-api.md)
-- [Products API](/.doc/products-api.md)
-- [Carts API](/.doc/carts-api.md)
-- [Users API](/.doc/users-api.md)
-- [Auth API](/.doc/auth-api.md)
--->
+   - System: PostgreSQL
+   - Server: `ambev_developer_evaluation_database`
+   - Username: `developer`
+   - Password: `ev@luAt10n`
+   - Database: `developer_evaluation`
+
+2. Verify tables after running migrations.
+
+---
+
+## Building and Running the API
+
+Navigate to `template/backend/src/Ambev.DeveloperEvaluation.WebApi`:
+
+```bash
+dotnet clean
+dotnet restore
+dotnet build
+dotnet run --urls "http://*:8080;https://*:8081"
+```
+
+The API is available at `http://localhost:8080`.
+
+---
+
+## Migrations and Database Update
+
+Migrations are in the **ORM** project:
+
+```bash
+cd src/Ambev.DeveloperEvaluation.ORM
+
+# Add a new migration
+dotnet ef migrations add MigrationName --startup-project ../Ambev.DeveloperEvaluation.WebApi/Ambev.DeveloperEvaluation.WebApi.csproj
+
+# Apply migrations
+dotnet ef database update --startup-project ../Ambev.DeveloperEvaluation.WebApi/Ambev.DeveloperEvaluation.WebApi.csproj
+```
+
+> If `dotnet ef` is not recognized, install the global tool:
+>
+> ```bash
+> dotnet tool install --global dotnet-ef --version 8.0.10
+> ```
+
+---
+
+## Testing
+
+### Unit Tests
+
+```bash
+dotnet test tests/Ambev.DeveloperEvaluation.Unit
+```
+
+### Functional Integration Tests
+
+```bash
+dotnet test tests/Ambev.DeveloperEvaluation.Functional
+```
+
+> Ensure containers are running (`docker-compose up -d`) before running integration tests.
+
+---
 
 ## Project Structure
-This section describes the overall structure and organization of the project files and directories. 
 
-See [Project Structure](/.doc/project-structure.md)
+```
+template/backend/
+├── src/
+│   ├── Ambev.DeveloperEvaluation.WebApi/   # ASP.NET Core Web API project
+│   ├── Ambev.DeveloperEvaluation.Common/   # Shared abstractions and utilities
+│   ├── Ambev.DeveloperEvaluation.Domain/   # Domain entities and business logic
+│   ├── Ambev.DeveloperEvaluation.ORM/      # EF Core context and configurations
+│   └── Ambev.DeveloperEvaluation.IoC/      # Dependency injection
+└── tests/
+    ├── Ambev.DeveloperEvaluation.Unit/     # Unit tests
+    └── Ambev.DeveloperEvaluation.Functional # Functional integration tests
+```
+
+---
+
+## Main Endpoints
+
+Access Swagger at `/swagger/index.html`:
+
+- **Sales**
+  - `GET /api/sales`        – List sales
+  - `GET /api/sales/{id}`   – Get sale by ID
+  - `POST /api/sales`       – Create new sale
+  - `PUT /api/sales/{id}`   – Update sale
+  - `DELETE /api/sales/{id}`– Cancel sale
+
+---
+
